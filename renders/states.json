@@ -24,6 +24,7 @@
         "b": 600,
         "w": 600
       },
+      "evalCp": 0,
       "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
       "file": "01_opening.png",
       "increment": 0,
@@ -77,6 +78,7 @@
         "b": 545,
         "w": 512
       },
+      "evalCp": 15,
       "fen": "r1bqk2r/ppp2ppp/2n5/3n4/2BP4/5N2/PP1N1PPP/R2QK2R w KQkq - 0 10",
       "file": "02_midgame.png",
       "increment": 0,
@@ -207,6 +209,7 @@
         "w": 74
       },
       "dialog": "promotion",
+      "evalCp": 180,
       "fen": "8/4Pk2/3K4/8/8/8/8/8 w - - 1 51",
       "file": "03_promotion.png",
       "increment": 0,
@@ -301,6 +304,7 @@
         "w": 452
       },
       "dialog": "gameover",
+      "evalCp": 35,
       "fen": "r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4",
       "file": "04_checkmate.png",
       "increment": 0,
@@ -342,13 +346,13 @@
       "camera": {
         "eye": [
           0,
-          13,
-          21
+          19,
+          27
         ],
         "focus": [
           0,
-          1.2000,
-          -1
+          2.6000,
+          -1.4000
         ],
         "fov": 40
       },
@@ -368,6 +372,7 @@
         "b": 545,
         "w": 512
       },
+      "evalCp": 15,
       "fen": "r1bqk2r/ppp2ppp/2n5/3n4/2BP4/5N2/PP1N1PPP/R2QK2R w KQkq - 0 10",
       "file": "05_closeup.png",
       "increment": 0,
@@ -411,6 +416,289 @@
       "status": "playing",
       "timeControl": 600,
       "turn": "w",
+      "youAre": "w"
+    },
+    {
+      "analysis": {
+        "evalGraph": [
+          35,
+          32,
+          27,
+          34,
+          24,
+          43,
+          33,
+          49,
+          41,
+          203,
+          206,
+          99800,
+          99900,
+          99900,
+          101000
+        ],
+        "moves": [
+          {
+            "accuracy": 97.9627,
+            "bestSan": "e4",
+            "color": "w",
+            "cpAfter": 35,
+            "label": "excellent",
+            "labelName": "Excellent",
+            "loss": 5,
+            "san": "e4",
+            "symbol": ""
+          },
+          {
+            "accuracy": 99.9999,
+            "bestSan": "c5",
+            "color": "b",
+            "cpAfter": -32,
+            "label": "excellent",
+            "labelName": "Excellent",
+            "loss": 0,
+            "san": "e5",
+            "symbol": ""
+          },
+          {
+            "accuracy": 97.9590,
+            "bestSan": "Nf3",
+            "color": "w",
+            "cpAfter": 27,
+            "label": "excellent",
+            "labelName": "Excellent",
+            "loss": 5,
+            "san": "Nf3",
+            "symbol": ""
+          },
+          {
+            "accuracy": 97.1546,
+            "bestSan": "Nc6",
+            "color": "b",
+            "cpAfter": -34,
+            "label": "excellent",
+            "labelName": "Excellent",
+            "loss": 7,
+            "san": "Nc6",
+            "symbol": ""
+          },
+          {
+            "accuracy": 95.9582,
+            "bestSan": "Bb5",
+            "color": "w",
+            "cpAfter": 24,
+            "label": "good",
+            "labelName": "Good",
+            "loss": 10,
+            "san": "Bc4",
+            "symbol": ""
+          },
+          {
+            "accuracy": 92.4637,
+            "bestSan": "Nf6",
+            "color": "b",
+            "cpAfter": -43,
+            "label": "good",
+            "labelName": "Good",
+            "loss": 19,
+            "san": "d6",
+            "symbol": ""
+          },
+          {
+            "accuracy": 95.9663,
+            "bestSan": "Nc3",
+            "color": "w",
+            "cpAfter": 33,
+            "label": "good",
+            "labelName": "Good",
+            "loss": 10,
+            "san": "Nc3",
+            "symbol": ""
+          },
+          {
+            "accuracy": 93.6274,
+            "bestSan": "Be7",
+            "color": "b",
+            "cpAfter": -49,
+            "label": "good",
+            "labelName": "Good",
+            "loss": 16,
+            "san": "Bg4",
+            "symbol": ""
+          },
+          {
+            "accuracy": 96.7664,
+            "bestSan": "h3",
+            "color": "w",
+            "cpAfter": 41,
+            "label": "excellent",
+            "labelName": "Excellent",
+            "loss": 8,
+            "san": "h3",
+            "symbol": ""
+          },
+          {
+            "accuracy": 52.6807,
+            "bestSan": "Bxf3",
+            "color": "b",
+            "cpAfter": -203,
+            "label": "mistake",
+            "labelName": "Mistake",
+            "loss": 162,
+            "san": "Bh5",
+            "symbol": "?"
+          },
+          {
+            "accuracy": 99.9999,
+            "bestSan": "Nxe5",
+            "color": "w",
+            "cpAfter": 206,
+            "label": "brilliant",
+            "labelName": "Brilliant",
+            "loss": 0,
+            "san": "Nxe5",
+            "symbol": "!!"
+          },
+          {
+            "accuracy": 22.6314,
+            "bestSan": "dxe5",
+            "color": "b",
+            "cpAfter": -99800,
+            "label": "blunder",
+            "labelName": "Blunder",
+            "loss": 99594,
+            "san": "Bxd1",
+            "symbol": "??"
+          },
+          {
+            "accuracy": 99.9999,
+            "bestSan": "Bxf7+",
+            "color": "w",
+            "cpAfter": 99900,
+            "label": "best",
+            "labelName": "Best",
+            "loss": 0,
+            "san": "Bxf7+",
+            "symbol": "★"
+          },
+          {
+            "accuracy": 99.9999,
+            "bestSan": "Ke7",
+            "color": "b",
+            "cpAfter": -99900,
+            "label": "best",
+            "labelName": "Best",
+            "loss": 0,
+            "san": "Ke7",
+            "symbol": "★"
+          },
+          {
+            "accuracy": 99.9999,
+            "bestSan": "Nd5#",
+            "color": "w",
+            "cpAfter": 101000,
+            "label": "best",
+            "labelName": "Best",
+            "loss": 0,
+            "san": "Nd5#",
+            "symbol": "★"
+          }
+        ],
+        "players": {
+          "b": {
+            "accuracy": 79.7939,
+            "counts": {
+              "best": 1,
+              "blunder": 1,
+              "excellent": 2,
+              "good": 2,
+              "mistake": 1
+            }
+          },
+          "w": {
+            "accuracy": 98.0765,
+            "counts": {
+              "best": 2,
+              "brilliant": 1,
+              "excellent": 3,
+              "good": 2
+            }
+          }
+        },
+        "source": "Stockfish depth 14"
+      },
+      "botLevel": 3,
+      "camera": {
+        "eye": [
+          0,
+          34,
+          40
+        ],
+        "focus": [
+          0,
+          0,
+          0
+        ],
+        "fov": 42
+      },
+      "captured": {
+        "b": [
+          "P",
+          "P"
+        ],
+        "w": [
+          "Q"
+        ]
+      },
+      "checkSquare": 53,
+      "clocks": {
+        "b": 168,
+        "w": 214
+      },
+      "evalMate": 100,
+      "fen": "r2q1bnr/ppp1kBpp/2np4/3NN3/4P3/7P/PPPP1PP1/R1BbK2R b KQ - 2 8",
+      "file": "07_review.png",
+      "increment": 0,
+      "lastMove": {
+        "from": 19,
+        "to": 36
+      },
+      "legalTargets": [],
+      "moves": [
+        "e4",
+        "e5",
+        "Nf3",
+        "Nc6",
+        "Bc4",
+        "d6",
+        "Nc3",
+        "Bg4",
+        "h3",
+        "Bh5",
+        "Nxe5",
+        "Bxd1",
+        "Bxf7+",
+        "Ke7",
+        "Nd5#"
+      ],
+      "reason": "checkmate",
+      "result": "white",
+      "sides": {
+        "b": {
+          "kind": "bot",
+          "level": 3,
+          "name": "Stockfish (Master)"
+        },
+        "w": {
+          "kind": "player",
+          "name": "Carlo",
+          "userId": 325285306
+        }
+      },
+      "status": "over",
+      "timeControl": 600,
+      "turn": "b",
+      "view": "review",
       "youAre": "w"
     }
   ]

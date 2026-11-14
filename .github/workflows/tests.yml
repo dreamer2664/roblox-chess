@@ -28,6 +28,29 @@ jobs:
       - name: Search tests + self play
         run: lua5.4 tests/run_ai_tests.lua
 
+      - name: Post-game analysis tests (classification + accuracy)
+        run: lua5.4 tests/run_analysis_tests.lua
+
+  stockfish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Lua, Stockfish and python-chess
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y lua5.4 stockfish
+          pip install chess
+
+      - name: Stockfish bridge (levels, legality, auth, analysis payload)
+        run: python3 tests/test_stockfish_bridge.py
+
+      - name: Piece meshes match the generator
+        run: python3 tools/make_pieces.py --check
+
   renders:
     runs-on: ubuntu-latest
     steps:
@@ -35,12 +58,25 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: sudo apt-get update -qq && sudo apt-get install -y lua5.4 fonts-dejavu
-      - run: pip install pillow numpy
-      - name: Regenerate preview renders from the engine
+      - name: Install toolchain
         run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y lua5.4 stockfish fonts-dejavu
+          pip install pillow numpy chess
+
+      - name: Regenerate piece meshes + QA sheet
+        run: |
+          python3 tools/make_pieces.py
+          python3 tools/piece_sheet.py
+
+      - name: Regenerate preview renders from the engine, with a real review scene
+        run: |
+          python3 tools/stockfish_bridge.py --port 8099 &
+          sleep 4
+          python3 scripts/analysis_game.py --port 8099 --depth 14
           lua5.4 scripts/dump_render_states.lua
           python3 tools/render.py
+
       - uses: actions/upload-artifact@v4
         with:
           name: renders

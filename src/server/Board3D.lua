@@ -12,6 +12,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Engine = require(Shared.Chess.Engine)
+local PieceLibrary = require(script.Parent.PieceLibrary)
 
 local Board3D = {}
 Board3D.__index = Board3D
@@ -40,100 +41,6 @@ local function makePart(parent, props)
 	part.CastShadow = props.CastShadow ~= false
 	part.Parent = parent
 	return part
-end
-
--- piece geometry -------------------------------------------------------
--- Every piece is a small stack of primitives. Cheap to build, reads well at the
--- default camera distance and needs zero uploaded assets.
-local function cylinder(parent, radius, height, y, color, name)
-	return makePart(parent, {
-		Name = name or "Cyl",
-		Color = color,
-		Size = Vector3.new(height, radius * 2, radius * 2),
-		CFrame = CFrame.new(0, y, 0) * CFrame.Angles(0, 0, math.rad(90)),
-		CastShadow = true,
-	})
-end
-
-local function ball(parent, radius, y, color)
-	return makePart(parent, { Name = "Ball", Color = color, Size = Vector3.new(radius * 2, radius * 2, radius * 2), CFrame = CFrame.new(0, y, 0) })
-end
-
-local function block(parent, size, cframe, color, name)
-	return makePart(parent, { Name = name or "Block", Color = color, Size = size, CFrame = cframe })
-end
-
-local PIECE_BUILDERS = {}
-
-function PIECE_BUILDERS.P(model, color)
-	cylinder(model, 0.62, 0.22, 0.11, color, "Base")
-	cylinder(model, 0.40, 0.12, 0.26, color, "Collar")
-	cylinder(model, 0.26, 0.75, 0.70, color, "Stem")
-	ball(model, 0.40, 1.25, color)
-end
-
-function PIECE_BUILDERS.R(model, color)
-	cylinder(model, 0.66, 0.24, 0.12, color, "Base")
-	cylinder(model, 0.46, 1.05, 0.76, color, "Body")
-	cylinder(model, 0.62, 0.20, 1.38, color, "Crown")
-	for i = 0, 3 do
-		local angle = math.rad(45 + i * 90)
-		block(model, Vector3.new(0.30, 0.34, 0.30),
-			CFrame.new(math.cos(angle) * 0.44, 1.62, math.sin(angle) * 0.44) * CFrame.Angles(0, -angle, 0),
-			color, "Merlon")
-	end
-end
-
-function PIECE_BUILDERS.N(model, color)
-	cylinder(model, 0.64, 0.20, 0.10, color, "Base")
-	cylinder(model, 0.44, 0.14, 0.24, color, "Collar")
-	-- stylised horse head: chest, neck, skull, muzzle, ears, mane
-	-- (tools/render.py builds the identical part list for the preview shots)
-	local k = 1.16
-	local parts = {
-		{ Vector3.new(0.56, 0.34, 0.46), Vector3.new(0, 0.62, -0.02), 0 },
-		{ Vector3.new(0.44, 1.00, 0.42), Vector3.new(0, 1.20, 0.02), -6 },
-		{ Vector3.new(0.42, 0.46, 0.50), Vector3.new(0, 1.78, -0.16), -18 },
-		{ Vector3.new(0.34, 0.32, 0.36), Vector3.new(0, 1.72, -0.46), -40 },
-	}
-	-- turned side-on so the horse head silhouette reads from the default camera
-	local facing = CFrame.Angles(0, math.rad(90), 0)
-	for index, part in ipairs(parts) do
-		block(model, part[1] * k,
-			facing * CFrame.new(part[2] * k) * CFrame.Angles(math.rad(part[3]), 0, 0),
-			color, "N" .. index)
-	end
-end
-
-function PIECE_BUILDERS.B(model, color)
-	cylinder(model, 0.66, 0.24, 0.12, color, "Base")
-	cylinder(model, 0.40, 0.22, 0.33, color, "Collar")
-	ball(model, 0.38, 0.86, color)
-	cylinder(model, 0.30, 0.55, 1.35, color, "Mitre")
-	ball(model, 0.14, 1.70, color)
-end
-
-function PIECE_BUILDERS.Q(model, color)
-	cylinder(model, 0.70, 0.26, 0.13, color, "Base")
-	cylinder(model, 0.44, 0.90, 0.72, color, "Body")
-	cylinder(model, 0.56, 0.18, 1.24, color, "Collar")
-	ball(model, 0.40, 1.55, color)
-	for i = 0, 4 do
-		local angle = math.rad(i * 72)
-		local spike = ball(model, 0.16, 1.86, color)
-		spike.Name = "Spike"
-		spike.CFrame = CFrame.new(math.cos(angle) * 0.36, 1.86, math.sin(angle) * 0.36)
-	end
-	ball(model, 0.18, 2.02, color)
-end
-
-function PIECE_BUILDERS.K(model, color)
-	cylinder(model, 0.72, 0.26, 0.13, color, "Base")
-	cylinder(model, 0.46, 0.95, 0.74, color, "Body")
-	cylinder(model, 0.58, 0.18, 1.30, color, "Collar")
-	ball(model, 0.40, 1.60, color)
-	block(model, Vector3.new(0.18, 0.62, 0.18), CFrame.new(0, 2.12, 0), color, "CrossV")
-	block(model, Vector3.new(0.46, 0.18, 0.18), CFrame.new(0, 2.20, 0), color, "CrossH")
 end
 
 -- Board3D --------------------------------------------------------------
@@ -268,33 +175,8 @@ end
 function Board3D:createPiece(idx, pieceString)
 	local color = pieceString:sub(1, 1)
 	local ptype = pieceString:sub(2, 2)
-	local model = Instance.new("Model")
+	local model = PieceLibrary.build(ptype, color, self.pieceFolder, CFrame.new(Config.squareToWorld(idx)))
 	model.Name = pieceString .. "_" .. Config.squareName(idx)
-	model.Parent = self.pieceFolder
-
-	local bodyColor = (color == "w") and COLORS.WhitePiece or COLORS.BlackPiece
-	local builder = PIECE_BUILDERS[ptype]
-	if builder then
-		builder(model, bodyColor)
-	end
-
-	-- a soft outline keeps white pieces readable on the light squares
-	if color == "w" then
-		local outline = Instance.new("Highlight")
-		outline.FillTransparency = 1
-		outline.OutlineColor = Color3.fromRGB(120, 118, 110)
-		outline.OutlineTransparency = 0.6
-		outline.DepthMode = Enum.HighlightDepthMode.Occluded
-		outline.Parent = model
-	end
-
-	local base = Config.squareToWorld(idx)
-	for _, part in ipairs(model:GetChildren()) do
-		if part:IsA("BasePart") then
-			part.CFrame = CFrame.new(base) * part.CFrame
-		end
-	end
-
 	self.piecesByIdx[idx] = model
 	return model
 end

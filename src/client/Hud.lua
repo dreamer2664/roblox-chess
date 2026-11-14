@@ -169,6 +169,7 @@ function Hud.new(player)
 	self.gui = gui
 
 	self:buildRightPanel(gui)
+	self:buildEvalBar(gui)
 	self:buildTopBanner(gui)
 	self:buildToast(gui)
 	self:buildPromotionDialog(gui)
@@ -228,12 +229,14 @@ function Hud:buildRightPanel(gui)
 	self.opponentCard.LayoutOrder = 2
 	self.moveList = self:buildMoveList(panel)
 	self.moveList.LayoutOrder = 3
+	self.reviewPanel = self:buildReviewPanel(panel)
+	self.reviewPanel.LayoutOrder = 4
 	self.selfCard = self:buildPlayerCard(panel, "self")
-	self.selfCard.LayoutOrder = 4
+	self.selfCard.LayoutOrder = 5
 	self.actionBar = self:buildActionBar(panel)
-	self.actionBar.LayoutOrder = 5
+	self.actionBar.LayoutOrder = 6
 	self.levelBar = self:buildLevelBar(panel)
-	self.levelBar.LayoutOrder = 6
+	self.levelBar.LayoutOrder = 7
 end
 
 function Hud:buildPlayerCard(parent, slot)
@@ -321,6 +324,17 @@ function Hud:buildPlayerCard(parent, slot)
 	return card
 end
 
+local ANNOTATION_COLORS = {
+	brilliant = Color3.fromRGB(27, 172, 166),
+	great = Color3.fromRGB(92, 139, 176),
+	best = Color3.fromRGB(129, 182, 76),
+	excellent = Color3.fromRGB(129, 182, 76),
+	good = Color3.fromRGB(149, 183, 118),
+	inaccuracy = Color3.fromRGB(247, 198, 49),
+	mistake = Color3.fromRGB(255, 164, 89),
+	blunder = Color3.fromRGB(250, 65, 45),
+}
+
 function Hud:buildMoveList(parent)
 	local panel = frame(parent, {
 		size = UDim2.new(1, 0, 1, -400),
@@ -380,6 +394,305 @@ function Hud:buildMoveList(parent)
 	self.moveScroll = scroll
 	self.moveRows = rows
 	return panel
+end
+
+--[[
+	Evaluation bar, drawn to the left of the board. White fills from the bottom,
+	exactly like the review screen on chess.com. Hidden until we have an eval.
+]]
+function Hud:buildEvalBar(gui)
+	local holder = frame(gui, {
+		name = "EvalBarHolder",
+		size = UDim2.new(0, 40, 0, 460),
+		position = UDim2.new(1, -420, 0.5, -10),
+		transparency = 1,
+	})
+	holder.AnchorPoint = Vector2.new(0, 0.5)
+	holder.Name = "EvalBarHolder"
+
+	local track = frame(holder, {
+		size = UDim2.new(0, 16, 1, 0),
+		position = UDim2.new(0.5, 0, 0, 0),
+		color = Color3.fromRGB(52, 50, 46),
+		radius = 8,
+		stroke = true,
+		clip = true,
+	})
+	track.AnchorPoint = Vector2.new(0.5, 0)
+	track.Name = "EvalTrack"
+
+	local fill = frame(track, {
+		size = UDim2.new(1, 0, 0.5, 0),
+		position = UDim2.new(0, 0, 0.5, 0),
+		color = Color3.fromRGB(238, 238, 210),
+		radius = 0,
+	})
+	fill.Name = "EvalFill"
+
+	local label = text(holder, {
+		text = "0.0",
+		font = F.Bold,
+		size = 12,
+		color = C.Text,
+		xAlign = Enum.TextXAlignment.Center,
+		position = UDim2.new(0.5, 0, 0, -22),
+		frameSize = UDim2.new(1, 0, 0, 16),
+	})
+	label.AnchorPoint = Vector2.new(0.5, 0)
+	label.Name = "EvalLabel"
+
+	self.evalBar = { holder = holder, fill = fill, label = label, track = track }
+	holder.Visible = false
+	return holder
+end
+
+function Hud:renderEvalBar(snapshot)
+	if not self.evalBar then return end
+	local analysis = snapshot.analysis
+	local lastCp, lastMate
+	if analysis and analysis.evalGraph and #analysis.evalGraph > 0 then
+		lastCp = analysis.evalGraph[#analysis.evalGraph]
+	elseif snapshot.evalCp or snapshot.evalMate then
+		lastCp, lastMate = snapshot.evalCp, snapshot.evalMate
+	else
+		self.evalBar.holder.Visible = false
+		return
+	end
+	lastMate = lastMate or snapshot.evalMate
+
+	local fraction
+	if lastMate then
+		fraction = lastMate > 0 and 1 or 0
+	else
+		local cp = math.clamp(lastCp or 0, -1200, 1200)
+		fraction = 1 / (1 + math.exp(-0.0035 * cp))
+	end
+	self.evalBar.holder.Visible = true
+	self.evalBar.fill.Size = UDim2.new(1, 0, fraction, 0)
+	self.evalBar.fill.Position = UDim2.new(0, 0, 1 - fraction, 0)
+
+	local textValue
+	if lastMate then
+		textValue = (math.abs(lastMate) >= 100) and (lastMate > 0 and "1-0" or "0-1")
+			or string.format("M%d", math.abs(lastMate))
+	else
+		local cp = lastCp or 0
+		textValue = string.format("%s%.1f", cp >= 0 and "+" or "-", math.abs(cp) / 100)
+	end
+	self.evalBar.label.Text = textValue
+end
+
+--[[
+	Post-game review card: accuracy per player, classification counts, an eval
+	sparkline and the three most expensive moves. Shown only once the server has
+	finished its Stockfish review.
+]]
+function Hud:buildReviewPanel(parent)
+	local card = frame(parent, {
+		name = "ReviewPanel",
+		size = UDim2.new(1, 0, 0, 250),
+		color = C.Panel,
+		radius = 8,
+		clip = true,
+	})
+	card.Name = "ReviewPanel"
+	card.Visible = false
+
+	text(card, {
+		text = "GAME REVIEW",
+		font = F.Bold,
+		size = 11,
+		color = C.TextDim,
+		position = UDim2.new(0, 14, 0, 8),
+		frameSize = UDim2.new(1, -28, 0, 14),
+	})
+
+	local accuracy = {}
+	for index, colour in ipairs({ "w", "b" }) do
+		local box = frame(card, {
+			size = UDim2.new(0.5, -18, 0, 54),
+			position = UDim2.new((index - 1) * 0.5, 12 + (index - 1) * 6, 0, 26),
+			color = C.PanelHover,
+			radius = 6,
+		})
+		text(box, {
+			text = (colour == "w") and "White" or "Black",
+			font = F.Bold,
+			size = 11,
+			color = C.TextMuted,
+			position = UDim2.new(0, 10, 0, 6),
+			frameSize = UDim2.new(1, -20, 0, 14),
+		})
+		local value = text(box, {
+			text = "–",
+			font = F.Black,
+			size = 24,
+			color = C.Text,
+			position = UDim2.new(0, 10, 0, 22),
+			frameSize = UDim2.new(1, -20, 0, 26),
+		})
+		accuracy[colour] = value
+	end
+
+	-- sparkline drawn as thin bars; cheap and it reads like the review graph
+	local graph = frame(card, {
+		size = UDim2.new(1, -28, 0, 62),
+		position = UDim2.new(0, 14, 0, 88),
+		color = Color3.fromRGB(24, 23, 21),
+		radius = 5,
+		stroke = true,
+		clip = true,
+	})
+	graph.Name = "EvalGraph"
+	local bars = Instance.new("Frame")
+	bars.Name = "Bars"
+	bars.Size = UDim2.new(1, 0, 1, 0)
+	bars.BackgroundTransparency = 1
+	bars.Parent = graph
+	local barsLayout = Instance.new("UIListLayout")
+	barsLayout.FillDirection = Enum.FillDirection.Horizontal
+	barsLayout.Padding = UDim.new(0, 1)
+	barsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	barsLayout.Parent = bars
+
+	local counts = frame(card, {
+		size = UDim2.new(1, -28, 0, 22),
+		position = UDim2.new(0, 14, 0, 158),
+		transparency = 1,
+	})
+	local countsLayout = Instance.new("UIListLayout")
+	countsLayout.FillDirection = Enum.FillDirection.Horizontal
+	countsLayout.Padding = UDim.new(0, 6)
+	countsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	countsLayout.Parent = counts
+
+	local moments = frame(card, {
+		size = UDim2.new(1, -28, 0, 62),
+		position = UDim2.new(0, 14, 0, 184),
+		transparency = 1,
+	})
+	local momentsLayout = Instance.new("UIListLayout")
+	momentsLayout.Padding = UDim.new(0, 2)
+	momentsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	momentsLayout.Parent = moments
+
+	self.review = {
+		card = card, accuracy = accuracy, graph = graph,
+		bars = bars, counts = counts, moments = moments,
+	}
+	return card
+end
+
+function Hud:renderReviewPanel(snapshot)
+	if not self.review then return end
+	local analysis = snapshot.analysis
+	if not analysis then
+		self.review.card.Visible = false
+		return
+	end
+	self.review.card.Visible = true
+
+	for _, colour in ipairs({ "w", "b" }) do
+		local entry = (analysis.players or {})[colour] or {}
+		self.review.accuracy[colour].Text = string.format("%.1f%%", entry.accuracy or 0)
+		self.review.accuracy[colour].TextColor3 = (colour == snapshot.youAre) and C.Accent or C.Text
+	end
+
+	-- counts
+	for _, child in ipairs(self.review.counts:GetChildren()) do
+		if child:IsA("Frame") then child:Destroy() end
+	end
+	local order = { "brilliant", "great", "best", "inaccuracy", "mistake", "blunder" }
+	local symbols = { brilliant = "!!", great = "!", best = "★", inaccuracy = "?!", mistake = "?", blunder = "??" }
+	local tally = {}
+	for _, move in ipairs(analysis.moves or {}) do
+		tally[move.label] = (tally[move.label] or 0) + 1
+	end
+	for index, label in ipairs(order) do
+		local count = tally[label]
+		if count then
+			local chip = frame(self.review.counts, {
+				size = UDim2.new(0, 46, 1, 0),
+				color = C.PanelHover,
+				radius = 4,
+			})
+			chip.LayoutOrder = index
+			text(chip, {
+				text = symbols[label],
+				font = F.Bold,
+				size = 12,
+				color = ANNOTATION_COLORS[label] or C.Text,
+				position = UDim2.new(0, 7, 0, 0),
+				frameSize = UDim2.new(0, 20, 1, 0),
+			})
+			text(chip, {
+				text = tostring(count),
+				font = F.Bold,
+				size = 12,
+				color = C.Text,
+				position = UDim2.new(0, 26, 0, 0),
+				frameSize = UDim2.new(0, 16, 1, 0),
+			})
+		end
+	end
+
+	-- eval sparkline
+	for _, child in ipairs(self.review.bars:GetChildren()) do
+		if child:IsA("Frame") then child:Destroy() end
+	end
+	local graph = analysis.evalGraph or {}
+	local count = #graph
+	if count > 0 then
+		local barWidth = math.max(2, math.floor((self.review.graph.AbsoluteSize.X - count) / count))
+		for index, cp in ipairs(graph) do
+			local normalised = math.clamp((cp or 0) / 800, -1, 1)
+			local height = math.abs(normalised) * 0.5
+			local bar = Instance.new("Frame")
+			bar.Size = UDim2.new(0, barWidth, height, 0)
+			bar.Position = normalised >= 0 and UDim2.new(0, 0, 0.5 - height, 0) or UDim2.new(0, 0, 0.5, 0)
+			bar.BackgroundColor3 = (cp or 0) >= 0 and Color3.fromRGB(238, 238, 210) or Color3.fromRGB(62, 59, 54)
+			bar.BorderSizePixel = 0
+			bar.LayoutOrder = index
+			bar.Parent = self.review.bars
+		end
+	end
+
+	-- key moments
+	for _, child in ipairs(self.review.moments:GetChildren()) do
+		if child:IsA("Frame") then child:Destroy() end
+	end
+	local bad = { inaccuracy = true, mistake = true, blunder = true }
+	local ranked = {}
+	for _, move in ipairs(analysis.moves or {}) do
+		if bad[move.label] then table.insert(ranked, move) end
+	end
+	table.sort(ranked, function(a, b) return (a.loss or 0) > (b.loss or 0) end)
+	for index = 1, math.min(3, #ranked) do
+		local move = ranked[index]
+		local row = frame(self.review.moments, {
+			size = UDim2.new(1, 0, 0, 18),
+			color = C.PanelHover,
+			radius = 3,
+		})
+		row.LayoutOrder = index
+		text(row, {
+			text = string.format("%d. %s  %s", index, move.san or "", move.symbol or ""),
+			font = F.Bold,
+			size = 12,
+			color = ANNOTATION_COLORS[move.label] or C.Text,
+			position = UDim2.new(0, 8, 0, 0),
+			frameSize = UDim2.new(0.5, 0, 1, 0),
+		})
+		text(row, {
+			text = (move.bestSan and ("best: " .. move.bestSan)) or "",
+			font = F.Medium,
+			size = 11,
+			color = C.TextDim,
+			xAlign = Enum.TextXAlignment.Right,
+			position = UDim2.new(0.5, 0, 0, 0),
+			frameSize = UDim2.new(0.5, -8, 1, 0),
+		})
+	end
 end
 
 function Hud:buildActionBar(parent)
@@ -757,7 +1070,11 @@ end
 
 function Hud:renderCard(refs, side, clockSeconds, isActive, isSelf, increment)
 	if not side then return end
-	refs.nameLabel.Text = (side.name or "Waiting…") .. (isSelf and "  (you)" or "")
+	-- "Computer (Advanced)" reads badly in a 200px label; the level already shows
+	-- up in the meta line just below.
+	local displayName = (side.name or "Waiting…"):split(" (")[1]
+	refs.nameLabel.Text = displayName .. (isSelf and "  (you)" or "")
+	refs.nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
 
 	local metaBits = {}
 	if side.kind == "bot" then
@@ -802,6 +1119,7 @@ function Hud:renderMoveList(snapshot)
 	end
 
 	local moves = snapshot.moves or {}
+	local analysis = snapshot.analysis
 	local rowCount = math.max(1, math.ceil(#moves / 2))
 	for row = 1, rowCount do
 		local rowFrame = Instance.new("Frame")
@@ -844,10 +1162,24 @@ function Hud:renderMoveList(snapshot)
 					size = 13,
 					color = isLast and C.Text or C.TextMuted,
 					position = UDim2.new(0, 8, 0, 0),
-					frameSize = UDim2.new(1, -12, 1, 0),
+					frameSize = UDim2.new(1, -26, 1, 0),
 				})
 				if isLast then
 					label.TextColor3 = C.Text
+				end
+				-- post-game annotation (!! ! ★ ?! ? ??), chess.com style
+				local annotation = analysis and analysis.moves and analysis.moves[moveIndex]
+				if annotation and annotation.symbol and annotation.symbol ~= "" then
+					local symbolLabel = text(cell, {
+						text = annotation.symbol,
+						font = F.Bold,
+						size = 12,
+						color = ANNOTATION_COLORS[annotation.label] or C.TextMuted,
+						xAlign = Enum.TextXAlignment.Right,
+						position = UDim2.new(0, 0, 0, 0),
+						frameSize = UDim2.new(1, -8, 1, 0),
+					})
+					symbolLabel.Name = "Annotation"
 				end
 			end
 		end
@@ -922,6 +1254,14 @@ function Hud:setSnapshot(snapshot)
 			button.BackgroundColor3 = active and C.Accent or C.PanelHover
 			button.TextColor3 = active and Color3.new(1, 1, 1) or C.TextMuted
 		end
+	end
+
+	-- evaluation bar + post-game review
+	self:renderEvalBar(snapshot)
+	self:renderReviewPanel(snapshot)
+	if self.review and self.review.card then
+		local showingReview = self.review.card.Visible
+		self.moveList.Size = showingReview and UDim2.new(1, 0, 1, -660) or UDim2.new(1, 0, 1, -400)
 	end
 
 	-- action bar state

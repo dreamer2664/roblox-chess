@@ -10,6 +10,7 @@
 package.path = "./src/shared/Chess/?.lua;" .. package.path
 local Engine = require("Engine")
 local Ai = require("Ai")
+local Analysis = require("Analysis")
 
 ---------------------------------------------------------------- json
 local function isArray(t)
@@ -137,6 +138,8 @@ local function scene(name, opts)
 			w = { kind = "player", name = "Carlo", userId = 325285306 },
 			b = { kind = "bot", name = "Computer (Advanced)", level = 3 },
 		},
+		evalCp = opts.evalCp or Ai.evaluate(state),
+		evalMate = opts.evalMate,
 		youAre = opts.youAre or "w",
 		botLevel = 3,
 		dialog = opts.dialog,
@@ -242,8 +245,92 @@ do
 		state = state,
 		lastMove = { from = Engine.squareIndex("d8"), to = Engine.squareIndex("d5") },
 		clocks = { w = 512, b = 545 },
-		camera = { eye = { 0, 13, 21 }, focus = { 0, 1.2, -1 }, fov = 40 },
+		-- pieces are ~6.7 studs tall now, so the close-up needs more distance
+		camera = { eye = { 0, 19, 27 }, focus = { 0, 2.6, -1.4 }, fov = 40 },
 	})
+end
+
+-- 6. post-game review (real Stockfish evals, classified by Analysis.lua) --
+do
+	local ok, evals = pcall(dofile, "renders/evals.lua")
+	if ok and type(evals) == "table" then
+		local state = Engine.new()
+		for _, uci in ipairs(evals.moves) do
+			local from = Engine.squareIndex(uci:sub(1, 2))
+			local to = Engine.squareIndex(uci:sub(3, 4))
+			local promo = uci:sub(5, 5)
+			local move = Engine.findMove(state, from, to, (promo ~= "" and promo:upper() or nil))
+			assert(move, "evals.lua contains an illegal move: " .. uci)
+			Engine.makeMove(state, move)
+		end
+
+		-- same sacrifice heuristic as src/server/Stockfish.lua, so the offline
+		-- render and a live game agree on which moves earn "!!"
+		local VALUE = { P = 1, N = 3, B = 3, R = 5, Q = 9, K = 20 }
+		local entries = {}
+		for i, record in ipairs(state.moveLog) do
+			local before = evals.evals[i]
+			local after = evals.evals[i + 1]
+			-- material balance over the next two plies: if the mover ends up down
+			-- at least a piece and the evaluation still holds, the move was a gift
+			local net = 0
+			for j = i, math.min(i + 2, #state.moveLog) do
+				local rec = state.moveLog[j]
+				if rec and rec.captured then
+					local value = VALUE[rec.captured:sub(2, 2)] or 0
+					if rec.color == record.color then net = net + value else net = net - value end
+				end
+			end
+			local sign = (record.color == "w") and 1 or -1
+			local afterReply = evals.evals[math.min(i + 2, #evals.evals)] or {}
+			local evalAfterReply = Analysis.toCentipawns(afterReply.cp, afterReply.mate) * sign
+			local sacrificed = (net <= -3 and evalAfterReply > -80)
+			entries[i] = {
+				san = record.san,
+				color = record.color,
+				cp = after.cp,
+				mate = after.mate,
+				bestSan = before.best_san,
+				isBest = (before.best_uci ~= nil and before.best_uci == evals.moves[i]),
+				isSacrifice = sacrificed,
+			}
+		end
+		local startEval = { cp = evals.evals[1].cp, mate = evals.evals[1].mate }
+		local report = Analysis.report(entries, { startEval = startEval })
+		report.source = string.format("Stockfish depth %d", evals.depth)
+
+		local status = Engine.gameStatus(state)
+		local sceneState = scene("07_review.png", {
+			state = state,
+			status = "over",
+			result = status.result,
+			reason = status.reason,
+			lastMove = {
+				from = state.moveLog[#state.moveLog].from,
+				to = state.moveLog[#state.moveLog].to,
+			},
+			clocks = { w = 214, b = 168 },
+		})
+		sceneState.view = "review"
+		local lastEval = evals.evals[#evals.evals]
+		sceneState.evalCp = lastEval.cp
+		sceneState.evalMate = lastEval.mate
+		sceneState.analysis = report
+		sceneState.sides.b.name = "Stockfish (Master)"
+		scenes[#scenes + 1] = sceneState
+
+		local counts = {}
+		for _, move in ipairs(report.moves) do
+			counts[move.symbol ~= "" and move.symbol or "."] =
+				(counts[move.symbol ~= "" and move.symbol or "."] or 0) + 1
+		end
+		local summary = {}
+		for key, value in pairs(counts) do summary[#summary + 1] = key .. "=" .. value end
+		print("analysis: " .. table.concat(summary, " ") ..
+			string.format(" | accuracy W %.1f B %.1f", report.players.w.accuracy, report.players.b.accuracy))
+	else
+		print("skipping review scene: renders/evals.lua missing (run scripts/analysis_game.py)")
+	end
 end
 
 ---------------------------------------------------------------- write

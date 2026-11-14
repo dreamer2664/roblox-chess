@@ -37,8 +37,8 @@ P = {
     "light": rgb("#EEEED2"),
     "dark": rgb("#769656"),
     "border": rgb("#262421"),
-    "white_piece": rgb("#F8F8F0"),
-    "black_piece": rgb("#57544F"),
+    "white_piece": rgb("#F2EFE6"),
+    "black_piece": rgb("#3E3B36"),
     "last_move": rgb("#FFFF33"),
     "select": rgb("#F5F682"),
     "legal_dot": rgb("#1E1E19"),
@@ -114,12 +114,15 @@ LIGHT = norm(np.array([-0.42, 1.0, 0.55]))
 AMBIENT = 0.46
 
 
-def shade(base, normal, view):
+def shade(base, normal, view, spec_strength=0.30, shininess=28.0, rim_strength=0.30):
     n = norm(np.asarray(normal, dtype=float))
+    v = norm(np.asarray(view, dtype=float))
     diffuse = max(0.0, float(np.dot(n, LIGHT)))
-    rim = max(0.0, 1.0 - abs(float(np.dot(n, view)))) ** 2.4
-    k = AMBIENT + 0.70 * diffuse + 0.22 * rim
-    return tuple(int(min(255, max(0, c * k))) for c in base)
+    half = norm(LIGHT + v)
+    specular = max(0.0, float(np.dot(n, half))) ** shininess * spec_strength
+    rim = max(0.0, 1.0 - abs(float(np.dot(n, v)))) ** 2.6 * rim_strength
+    k = AMBIENT + 0.72 * diffuse + rim
+    return tuple(int(min(255, max(0, c * k + 255 * specular))) for c in base)
 
 
 # ---------------------------------------------------------------- geometry
@@ -207,69 +210,69 @@ def box(size, center, rot=(0, 0, 0)):
     return polys
 
 
-# piece profiles: radius, height in studs (matches Board3D proportions) ------
-PROFILES = {
-    "P": [(0, 0), (0.60, 0), (0.60, 0.16), (0.42, 0.24), (0.31, 0.33), (0.24, 0.95),
-          (0.30, 1.00), (0.40, 1.12), (0.40, 1.30), (0.31, 1.47), (0.19, 1.60),
-          (0.08, 1.70), (0, 1.73)],
-    "R": [(0, 0), (0.66, 0), (0.66, 0.18), (0.48, 0.28), (0.45, 1.28), (0.56, 1.36),
-          (0.60, 1.50), (0.50, 1.56), (0, 1.56)],
-    "N": [(0, 0), (0.64, 0), (0.64, 0.18), (0.46, 0.24), (0.40, 0.30), (0.30, 0.42),
-          (0, 0.42)],
-    "B": [(0, 0), (0.64, 0), (0.64, 0.18), (0.42, 0.26), (0.28, 0.40), (0.40, 0.55),
-          (0.32, 0.64), (0.25, 1.30), (0.32, 1.38), (0.40, 1.52), (0.30, 1.70),
-          (0.17, 1.84), (0.10, 2.00), (0.14, 2.10), (0.09, 2.20), (0, 2.24)],
-    "Q": [(0, 0), (0.70, 0), (0.70, 0.20), (0.48, 0.30), (0.38, 0.40), (0.31, 1.10),
-          (0.40, 1.18), (0.52, 1.36), (0.44, 1.48), (0.32, 1.62), (0.38, 1.72),
-          (0.28, 1.80), (0, 1.84)],
-    "K": [(0, 0), (0.72, 0), (0.72, 0.20), (0.50, 0.30), (0.40, 0.40), (0.33, 1.20),
-          (0.42, 1.28), (0.54, 1.48), (0.46, 1.60), (0.34, 1.72), (0.40, 1.82),
-          (0.30, 1.90), (0, 1.94)],
+# ---------------------------------------------------------------- pieces
+# The previews render the *actual* assets: assets/pieces/*.obj, the same meshes
+# that get imported into Studio (see docs/ASSETS.md). If the meshes are missing,
+# fall back to a crude lathe so the tool still runs.
+PIECE_DIR = os.path.join(ROOT, "assets", "pieces")
+PIECE_FILES = {
+    "P": "pawn.obj", "R": "rook.obj", "N": "knight.obj",
+    "B": "bishop.obj", "Q": "queen.obj", "K": "king.obj",
 }
-
-
-PIECE_SCALE = 1.16
-
-
-def piece_geometry(ptype):
-    """Returns list of (poly, normal) in piece-local space (origin at base)."""
-    profile = [(r * PIECE_SCALE, y * PIECE_SCALE) for r, y in PROFILES[ptype]]
-    geoms = list(lathe(profile, 30))
-    if ptype == "R":
-        for i in range(4):
-            a = math.radians(45 + i * 90)
-            geoms += box((0.30 * PIECE_SCALE, 0.36 * PIECE_SCALE, 0.30 * PIECE_SCALE),
-                         (math.cos(a) * 0.46 * PIECE_SCALE, 1.72 * PIECE_SCALE, math.sin(a) * 0.46 * PIECE_SCALE),
-                         (0, -math.degrees(a), 0))
-    elif ptype == "N":
-        k = PIECE_SCALE
-        parts = [
-            ((0.56, 0.34, 0.46), (0, 0.62, -0.02), (0, 0, 0)),
-            ((0.44, 1.00, 0.42), (0, 1.20, 0.02), (-6, 0, 0)),
-            ((0.42, 0.46, 0.50), (0, 1.78, -0.16), (-18, 0, 0)),
-            ((0.34, 0.32, 0.36), (0, 1.72, -0.46), (-40, 0, 0)),
-        ]
-        for size, center, rot in parts:
-            geoms += box(tuple(v * k for v in size), tuple(v * k for v in center), rot)
-    elif ptype == "Q":
-        for i in range(5):
-            a = math.radians(i * 72)
-            geoms += sphere(0.15 * PIECE_SCALE,
-                            (math.cos(a) * 0.36 * PIECE_SCALE, 1.92 * PIECE_SCALE, math.sin(a) * 0.36 * PIECE_SCALE), 12, 8)
-        geoms += sphere(0.17 * PIECE_SCALE, (0, 2.06 * PIECE_SCALE, 0), 14, 10)
-    elif ptype == "K":
-        k = PIECE_SCALE
-        geoms += box((0.16 * k, 0.62 * k, 0.16 * k), (0, 2.22 * k, 0), (0, 0, 0))
-        geoms += box((0.46 * k, 0.16 * k, 0.16 * k), (0, 2.30 * k, 0), (0, 0, 0))
-
-    if ptype == "N":
-        # knights face the opponent; we turn them side-on so the head profile reads
-        R = rot_matrix(0, 90, 0)
-        geoms = [(poly @ R.T, R @ np.asarray(normal)) for poly, normal in geoms]
-    return geoms
-
+# knights are modelled facing +Z; turn them side-on so the head profile reads
+PIECE_YAW = {"N": 90.0}
 
 GEOM_CACHE = {}
+
+
+def load_obj(path):
+    verts, normals, faces = [], [], []
+    with open(path) as fh:
+        for line in fh:
+            if line.startswith("v "):
+                parts = line.split()
+                verts.append((float(parts[1]), float(parts[2]), float(parts[3])))
+            elif line.startswith("vn "):
+                parts = line.split()
+                normals.append((float(parts[1]), float(parts[2]), float(parts[3])))
+            elif line.startswith("f "):
+                idx = []
+                for token in line.split()[1:]:
+                    bits = token.split("/")
+                    vi = int(bits[0]) - 1
+                    ni = int(bits[2]) - 1 if len(bits) > 2 and bits[2] else vi
+                    idx.append((vi, ni))
+                faces.append(idx)
+    return np.array(verts), faces, np.array(normals)
+
+
+def piece_geometry(ptype, yaw=None):
+    """Returns [(polygons (N,3), face normal)] for one piece type, cached by yaw."""
+    if yaw is None:
+        yaw = PIECE_YAW.get(ptype, 0.0)
+    key = (ptype, yaw)
+    if key in GEOM_CACHE:
+        return GEOM_CACHE[key]
+
+    path = os.path.join(PIECE_DIR, PIECE_FILES.get(ptype, "pawn.obj"))
+    geoms = []
+    if os.path.exists(path):
+        verts, faces, normals = load_obj(path)
+        for face in faces:
+            vi = [f[0] for f in face]
+            ni = [f[1] for f in face]
+            poly = verts[vi]
+            normal = normals[ni].mean(axis=0)
+            geoms.append((poly, normal))
+        if yaw:
+            R = rot_matrix(0, yaw, 0)
+            geoms = [(poly @ R.T, R @ np.asarray(n)) for poly, n in geoms]
+    else:
+        fallback = [(0, 0), (0.4, 0), (0.4, 0.2), (0.3, 0.5), (0.4, 0.7), (0.3, 1.0), (0, 1.1)]
+        for poly, n in lathe([(r * 1.6, y * 2.0) for r, y in fallback], 20):
+            geoms.append((poly, n))
+    GEOM_CACHE[key] = geoms
+    return geoms
 
 
 def square_center(idx):
@@ -469,12 +472,10 @@ def render_board(state, cam, supersample=SS):
         if not piece:
             continue
         color, ptype = piece[0], piece[1]
-        key = ptype
-        if key not in GEOM_CACHE:
-            GEOM_CACHE[key] = piece_geometry(ptype)
+        yaw = PIECE_YAW.get(ptype, 0) + (180 if color == "b" else 0)
         origin = square_center(idx)
         base = P["white_piece"] if color == "w" else P["black_piece"]
-        for poly, normal in GEOM_CACHE[key]:
+        for poly, normal in piece_geometry(ptype, yaw):
             world = poly + origin
             centroid = world.mean(axis=0)
             depth = float(((centroid - cam.eye) @ cam.R.T)[2])
@@ -483,7 +484,12 @@ def render_board(state, cam, supersample=SS):
     polys.sort(key=lambda item: -item[0])
     for depth, world, normal, centroid, base in polys:
         view = norm(cam.eye - centroid)
-        col = shade(base, normal, view)
+        if float(np.dot(norm(np.asarray(normal, dtype=float)), view)) <= 0.0:
+            continue  # backface cull
+        is_dark = base is P["black_piece"]
+        col = shade(base, normal, view,
+                    spec_strength=0.34 if is_dark else 0.22,
+                    rim_strength=0.42 if is_dark else 0.26)
         screen, z = cam.project(world)
         if np.any(z <= 0.2):
             continue
@@ -579,9 +585,141 @@ def blit_glyph(img, box, ptype, is_white):
         img.alpha_composite(layer, (int(pos[0]), int(pos[1])))
 
 
+PIECE_YAW_FALLBACK = {"N": 180}
+
+EVAL_SYMBOL_COLORS = {
+    "!!": (27, 172, 166),
+    "!": (92, 139, 176),
+    "★": (129, 182, 76),
+    "?!": (247, 198, 49),
+    "?": (255, 164, 89),
+    "??": (250, 65, 45),
+}
+
+
+def format_eval(cp, mate=None):
+    if mate is not None:
+        if abs(mate) >= 100:
+            return "1-0" if mate > 0 else "0-1"
+        if mate == 0:
+            return "="
+        return "M%d" % abs(mate)
+    cp = cp or 0
+    sign = "+" if cp >= 0 else "-"
+    value = abs(cp) / 100.0
+    if value < 10:
+        return "%s%.1f" % (sign, value)
+    return "%s%d" % (sign, int(round(value)))
+
+
 def s(v):
     """scale a design pixel value to the supersampled canvas"""
     return int(v * SS)
+
+
+MATERIAL = {"P": 1, "N": 3, "B": 3, "R": 5, "Q": 9, "K": 0}
+
+
+def _material_advantage(captured):
+    """Captured pieces are the opponent's pieces, so this is the +N badge."""
+    return sum(MATERIAL.get(p, 0) for p in captured)
+
+
+def draw_eval_bar(d, layer, state, R):
+    """Vertical evaluation bar to the left of the board, like the review view."""
+    ev = state.get("evalCp")
+    mate = state.get("evalMate")
+    if ev is None and mate is None:
+        return
+    bx, by, bw, bh = 152, 250, 15, 460
+    rr(d, R(bx, by, bx + bw, by + bh), s(9), fill=(52, 50, 46, 255), outline=P["stroke"] + (255,), width=s(1))
+    # logistic curve so a +2.0 position is not drawn as a full bar
+    cp = 0 if ev is None else max(-1200, min(1200, ev))
+    frac = 1.0 / (1.0 + math.exp(-0.0035 * cp))
+    if mate is not None:
+        frac = 1.0 if mate > 0 else 0.0
+    fill_h = max(6, int((bh - 4) * frac))
+    rr(d, R(bx + 2, by + bh - 2 - fill_h, bx + bw - 2, by + bh - 2), s(7), fill=(238, 238, 210, 255))
+    label = format_eval(ev if ev is not None else 0, mate)
+    txt(d, (s(bx + bw / 2), s(by - 16)), label, font(12, "bold", mono=True), P["text"], anchor="mm")
+
+
+def draw_review_card(d, layer, state, x0, y, inner, R):
+    """Accuracy cards, classification counts, eval curve and key moments."""
+    report = state.get("analysis") or {}
+    players = report.get("players", {})
+    moves = report.get("moves", [])
+    height = 302
+    rr(d, R(x0, y, x0 + inner, y + height), s(8), fill=P["panel"] + (255,))
+    txt(d, (s(x0 + 14), s(y + 18)), "GAME REVIEW", font(11, "bold"), P["text_dim"], anchor="lm")
+
+    you = state.get("youAre", "w")
+    for i, (colour, label) in enumerate([("w", "White"), ("b", "Black")]):
+        cx = x0 + 12 + i * (inner / 2 - 6)
+        cw = inner / 2 - 18
+        rr(d, R(cx, y + 32, cx + cw, y + 92), s(6), fill=P["panel_hover"] + (255,))
+        txt(d, (s(cx + 12), s(y + 46)), label + ("  (you)" if colour == you else ""),
+            font(11, "bold"), P["text_muted"], anchor="lm")
+        accuracy = (players.get(colour) or {}).get("accuracy", 0)
+        txt(d, (s(cx + 12), s(y + 72)), "%.1f" % accuracy, font(26, "black"),
+            P["accent"] if colour == you else P["text"], anchor="lm")
+        txt(d, (s(cx + 12 + 58), s(y + 76)), "%", font(13, "bold"), P["text_dim"], anchor="lm")
+
+    # classification counts
+    counts = {"!!": 0, "!": 0, "★": 0, "?!": 0, "?": 0, "??": 0}
+    for move in moves:
+        if move.get("symbol") in counts:
+            counts[move["symbol"]] += 1
+    cy = y + 100
+    txt(d, (s(x0 + 14), s(cy + 9)), "MOVES", font(10, "bold"), P["text_dim"], anchor="lm")
+    bx = x0 + 62
+    for symbol, key in zip(["!!", "!", "★", "?!", "?", "??"], ["!!", "!", "★", "?!", "?", "??"]):
+        if counts[symbol] == 0:
+            continue
+        rr(d, R(bx, cy, bx + 44, cy + 20), s(4), fill=P["panel_hover"] + (255,))
+        txt(d, (s(bx + 8), s(cy + 10)), symbol, font(11, "bold"),
+            EVAL_SYMBOL_COLORS.get(symbol, P["text"]), anchor="lm")
+        txt(d, (s(bx + 30), s(cy + 10)), str(counts[symbol]), font(11, "bold"), P["text"], anchor="lm")
+        bx += 50
+
+    # eval curve
+    graph = report.get("evalGraph") or []
+    gx, gy, gw, gh = x0 + 14, y + 130, inner - 28, 74
+    rr(d, R(gx, gy, gx + gw, gy + gh), s(5), fill=(24, 23, 21, 255), outline=P["stroke"] + (200,), width=s(1))
+    d.line([s(gx), s(gy + gh / 2), s(gx + gw), s(gy + gh / 2)], fill=P["stroke"] + (255,), width=s(1))
+    if len(graph) > 1:
+        points = []
+        for i, cp in enumerate(graph):
+            capped = max(-800, min(800, cp))
+            px = gx + (gw * i / (len(graph) - 1))
+            py = gy + gh / 2 - (capped / 800.0) * (gh / 2 - 4)
+            points.append((s(px), s(py)))
+        d.line(points, fill=P["accent"] + (255,), width=s(2), joint="curve")
+        for point in points:
+            d.ellipse([point[0] - s(2), point[1] - s(2), point[0] + s(2), point[1] + s(2)],
+                      fill=P["accent"] + (255,))
+
+    # key moments: the three most expensive moves
+    bad = {"inaccuracy", "mistake", "blunder"}
+    ranked = [m for m in moves if m.get("label") in bad]
+    ranked = sorted(ranked, key=lambda m: m.get("loss", 0), reverse=True)[:3]
+    if not ranked:
+        ranked = sorted(moves, key=lambda m: m.get("loss", 0), reverse=True)[:2]
+    ky = gy + gh + 22
+    txt(d, (s(gx), s(gy + gh + 12)), "KEY MOMENTS", font(10, "bold"), P["text_dim"], anchor="lm")
+    for i, move in enumerate(ranked):
+        row_y2 = ky + i * 24
+        symbol = move.get("symbol") or ""
+        txt(d, (s(gx), s(row_y2 + 10)), "%d." % (i + 1), font(11, "regular"), P["text_dim"], anchor="lm")
+        txt(d, (s(gx + 18), s(row_y2 + 10)), move.get("san", ""), font(12, "bold"), P["text"], anchor="lm")
+        txt(d, (s(gx + 82), s(row_y2 + 10)), symbol, font(11, "bold"),
+            EVAL_SYMBOL_COLORS.get(symbol, P["text_muted"]), anchor="lm")
+        txt(d, (s(gx + 106), s(row_y2 + 10)), move.get("labelName", ""), font(11, "regular"),
+            P["text_muted"], anchor="lm")
+        if move.get("bestSan"):
+            txt(d, (s(gx + gw), s(row_y2 + 10)), "best: " + move["bestSan"], font(11, "regular"),
+                P["text_dim"], anchor="rm")
+    return y + height
 
 
 def draw_hud(img, state):
@@ -634,9 +772,10 @@ def draw_hud(img, state):
             d.rounded_rectangle(av, radius=s(8), outline=P["accent"] + (255,), width=s(2))
 
         name = side.get("name") or "Waiting…"
+        name = name.split(" (")[0]
         if is_self:
             name += "  (you)"
-        fit(d, (s(x0 + 72), s(y + 14)), name, font(16, "bold"), P["text"], inner - 72 - 124)
+        fit(d, (s(x0 + 72), s(y + 13)), name, font(16, "bold"), P["text"], inner - 72 - 128)
 
         meta = []
         if side.get("kind") == "bot":
@@ -650,11 +789,14 @@ def draw_hud(img, state):
             meta.append("+%ds" % state["increment"])
         txt(d, (s(x0 + 72), s(y + 34)), " · ".join(meta), font(12, "regular"), P["text_muted"])
 
-        # captured pieces
+        # captured pieces + material advantage
         cx = x0 + 72
         for ptype in captured[:10]:
-            blit_glyph(layer, (s(cx), s(y + 56), s(20), s(20)), ptype, captured_is_white)
-            cx += 22
+            blit_glyph(layer, (s(cx), s(y + 54), s(18), s(18)), ptype, captured_is_white)
+            cx += 20
+        advantage = _material_advantage(captured)
+        if advantage > 0:
+            txt(d, (s(cx + 4), s(y + 63)), "+%d" % advantage, font(12, "bold"), P["text_muted"], anchor="lm")
 
         # clock
         clk = "%d:%02d" % (int(clock_seconds) // 60, int(clock_seconds) % 60)
@@ -676,8 +818,9 @@ def draw_hud(img, state):
          captured["w"] if top_color == "b" else captured["b"], top_color == "b")
     y += 96 + 10
 
+    review = state.get("view") == "review"
     # move list
-    ml_h = 550
+    ml_h = 232 if review else 550
     rr(d, R(x0, y, x0 + inner, y + ml_h), s(8), fill=P["panel"] + (255,))
     rr(d, R(x0, y, x0 + inner, y + 34), s(8), fill=P["panel"] + (255,))
     txt(d, (s(x0 + 14), s(y + 17)), "MOVES", font(12, "bold"), P["text_dim"], anchor="lm")
@@ -685,11 +828,12 @@ def draw_hud(img, state):
         txt(d, (s(x0 + inner - 14), s(y + 17)), "CHECK", font(11, "bold"), P["clock_low"], anchor="rm")
 
     moves = state.get("moves", [])
+    analysis_moves = (state.get("analysis") or {}).get("moves") or []
     row_y = y + 38
-    max_rows = (ml_h - 44) // 26
+    max_rows = (ml_h - 44) // 24
     start_row = max(0, math.ceil(len(moves) / 2) - max_rows)
     for row in range(start_row, math.ceil(len(moves) / 2)):
-        ry = row_y + (row - start_row) * 26
+        ry = row_y + (row - start_row) * 24
         txt(d, (s(x0 + 12), s(ry + 11)), "%d." % (row + 1), font(12, "regular"), P["text_dim"], anchor="lm")
         for col in range(2):
             mi = row * 2 + col
@@ -702,7 +846,14 @@ def draw_hud(img, state):
                 rr(d, R(cell_x, ry, cell_x + cell_w, ry + 22), s(4), fill=P["panel_hover"] + (255,))
             txt(d, (s(cell_x + 8), s(ry + 11)), moves[mi], font(13, "bold" if is_last else "regular"),
                 P["text"] if is_last else P["text_muted"], anchor="lm")
+            symbol = analysis_moves[mi].get("symbol") if mi < len(analysis_moves) else ""
+            if symbol:
+                colour = EVAL_SYMBOL_COLORS.get(symbol, P["text_muted"])
+                txt(d, (s(cell_x + cell_w - 8), s(ry + 11)), symbol, font(12, "bold"), colour, anchor="rm")
     y += ml_h + 10
+
+    if review:
+        y = draw_review_card(d, layer, state, x0, y, inner, R) + 10
 
     card(y, bottom_side, bottom_color, you == bottom_color, clocks[bottom_color],
          playing and turn == bottom_color,
@@ -711,7 +862,9 @@ def draw_hud(img, state):
 
     # action bar
     labels = ["Resign", "Draw", "Flip"]
-    if state.get("status") == "over":
+    if review:
+        labels = ["New game", "Flip"]
+    elif state.get("status") == "over":
         labels = ["Flip"]
     for i, label in enumerate(labels):
         bx = x0 + i * (inner / 4)
@@ -721,17 +874,24 @@ def draw_hud(img, state):
         txt(d, (s(bx + bw / 2), s(y + 20)), label, font(13, "bold"), P["text"], anchor="mm")
     y += 40 + 10
 
-    # level bar
-    rr(d, R(x0, y, x0 + inner, y + 62), s(8), fill=P["panel"] + (255,))
-    txt(d, (s(x0 + 10), s(y + 13)), "COMPUTER STRENGTH", font(10, "bold"), P["text_dim"], anchor="lm")
-    levels = ["Beginner", "Intermediate", "Advanced", "Master"]
-    for i, label in enumerate(levels):
-        bx = x0 + 3 + i * (inner / 4)
-        bw = inner / 4 - 6
-        active = (i + 1) == state.get("botLevel", 3)
-        rr(d, R(bx, y + 26, bx + bw, y + 54), s(5), fill=(P["accent"] if active else P["panel_hover"]) + (255,))
-        txt(d, (s(bx + bw / 2), s(y + 40)), label, font(11, "bold" if active else "regular"),
-            P["text"] if active else P["text_muted"], anchor="mm")
+    if review:
+        rr(d, R(x0, y, x0 + inner, y + 46), s(8), fill=P["panel"] + (255,))
+        source = (state.get("analysis") or {}).get("source", "Stockfish")
+        txt(d, (s(x0 + 12), s(y + 16)), "REVIEW BY", font(10, "bold"), P["text_dim"], anchor="lm")
+        txt(d, (s(x0 + 12), s(y + 33)), source, font(13, "bold"), P["text"], anchor="lm")
+        txt(d, (s(x0 + inner - 12), s(y + 33)), "Game over", font(11, "regular"), P["text_dim"], anchor="rm")
+    else:
+        # level bar
+        rr(d, R(x0, y, x0 + inner, y + 62), s(8), fill=P["panel"] + (255,))
+        txt(d, (s(x0 + 10), s(y + 13)), "COMPUTER STRENGTH", font(10, "bold"), P["text_dim"], anchor="lm")
+        levels = ["Beginner", "Intermediate", "Advanced", "Master"]
+        for i, label in enumerate(levels):
+            bx = x0 + 3 + i * (inner / 4)
+            bw = inner / 4 - 6
+            active = (i + 1) == state.get("botLevel", 3)
+            rr(d, R(bx, y + 26, bx + bw, y + 54), s(5), fill=(P["accent"] if active else P["panel_hover"]) + (255,))
+            txt(d, (s(bx + bw / 2), s(y + 40)), label, font(11, "bold" if active else "regular"),
+                P["text"] if active else P["text_muted"], anchor="mm")
 
     # ---------------------------------------------------------- banner
     bw, bh = 320, 40
@@ -779,6 +939,9 @@ def draw_hud(img, state):
                outline=P["stroke"] + (180,), width=s(1))
             blit_glyph(layer, (s(bx0 + 20), s(by0 + 8), s(40), s(40)), code, state.get("youAre") == "w")
             txt(d, (s(bx0 + 40), s(by0 + 68)), label, font(11, "regular"), P["text_muted"], anchor="mm")
+
+    if state.get("evalCp") is not None or state.get("evalMate") is not None:
+        draw_eval_bar(d, layer, state, R)
 
     if state.get("toast"):
         tw, th = 360, 40
@@ -844,6 +1007,9 @@ def main():
         written.append(out)
         print("wrote", out, img.size)
 
+    sheet = os.path.join(RENDERS, "06_piece_sheet.png")
+    if os.path.exists(sheet):
+        written.append(sheet)
     contact_sheet(written, os.path.join(RENDERS, "00_overview.png"))
 
 

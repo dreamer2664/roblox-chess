@@ -14,7 +14,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Engine = require(Shared.Chess.Engine)
 local Ai = require(Shared.Chess.Ai)
+local Analysis = require(Shared.Chess.Analysis)
 local Config = require(Shared:WaitForChild("Config"))
+local Stockfish = require(script.Parent.Stockfish)
 
 local Session = {}
 Session.__index = Session
@@ -40,6 +42,11 @@ function Session.new(callbacks)
 	self.turnStartedAt = os.clock()
 	self.lastTick = os.clock()
 	self.pendingBotToken = 0
+	self.analysis = nil
+	self.engineName = (function()
+		local ok, name = Stockfish.status()
+		return ok and tostring(name) or "Built-in engine"
+	end)()
 	return self
 end
 
@@ -137,6 +144,8 @@ function Session:snapshotFor(viewerUserId)
 		sides = { w = describeSeat("w"), b = describeSeat("b") },
 		youAre = self:seatOf(viewerUserId) or "spectator",
 		botLevel = self.botLevel,
+		engineName = self.engineName,
+		analysis = self.analysis,
 		pendingDrawFrom = self.pendingDrawFrom,
 		pieceCount = (function()
 			local n = 0
@@ -207,6 +216,8 @@ function Session:startGame()
 	self.result, self.reason = nil, nil
 	self.lastMove = nil
 	self.pendingDrawFrom = nil
+	self.analysis = nil
+	self.analysisPending = false
 	self.clocks = { w = self.timeControl, b = self.timeControl }
 	self.turnStartedAt = os.clock()
 	self.lastTick = os.clock()
@@ -230,6 +241,51 @@ function Session:finish(result, reason)
 	end
 	self:notice(nil, text)
 	self:emit()
+	self:startAnalysis()
+end
+
+--[[
+	Post-game review. Prefers Stockfish through the bridge; falls back to the
+	built-in engine so the analysis tab still works offline (just shallower).
+]]
+function Session:startAnalysis()
+	if not Config.Analysis.autoAnalyse then return end
+	if self.analysisPending or self.analysis then return end
+	self.analysisPending = true
+
+	local stateSnapshot = Engine.clone(self.state)
+	local versionAtStart = self.version
+
+	task.spawn(function()
+		local entries, startEval, source
+		if Stockfish.enabled() then
+			local ok, e, s = pcall(function()
+				return Stockfish.analyseGame(stateSnapshot, { depth = Config.Analysis.depth })
+			end)
+			if ok and e then
+				entries, startEval, source = e, s, "Stockfish"
+			else
+				warn("[Chess] Stockfish analysis failed, falling back:", tostring(e))
+			end
+		end
+		if not entries and Config.Analysis.offlineFallback then
+			local ok, e, s = pcall(function()
+				return Analysis.selfAnalyse(Engine, Ai, stateSnapshot, { level = Config.Analysis.offlineLevel })
+			end)
+			if ok and e then
+				entries, startEval, source = e, s, "Built-in engine"
+			end
+		end
+
+		self.analysisPending = false
+		if not entries then return end
+		if self.version ~= versionAtStart and self.status ~= "over" then return end
+		local report = Analysis.report(entries, { startEval = startEval })
+		report.source = source
+		self.analysis = report
+		self:emit()
+		self:notice(nil, "Game review ready (" .. tostring(source) .. ")")
+	end)
 end
 
 function Session:rematch(userId)
@@ -323,7 +379,20 @@ function Session:maybeBotMove()
 		if self.status ~= "playing" or self.state.turn ~= color then return end
 		if not self:isBotSeat(color) then return end
 
-		local move = Ai.bestMove(self.state, { level = self.botLevel })
+		local move
+		if Stockfish.enabled() then
+			local engineMove, err = Stockfish.moveFor(self.state, self.botLevel)
+			if engineMove then
+				move = engineMove
+				self.engineName = "Stockfish"
+			elseif err then
+				warn("[Chess] Stockfish move failed, using built-in engine:", err)
+			end
+		end
+		if not move then
+			move = Ai.bestMove(self.state, { level = self.botLevel })
+			self.engineName = "Built-in engine"
+		end
 		if token ~= self.pendingBotToken then return end
 		if not move then return end
 		self:commitMove(move)

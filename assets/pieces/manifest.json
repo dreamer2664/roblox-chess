@@ -1,0 +1,78 @@
+{
+  "generatedBy": "tools/make_pieces.py",
+  "pieces": {
+    "pawn": {
+      "file": "pawn.obj",
+      "triangles": 3304,
+      "vertices": 1708,
+      "height_studs": 3.16,
+      "bbox_studs": [
+        2.4,
+        3.16,
+        2.4
+      ],
+      "yaw_degrees": 0
+    },
+    "rook": {
+      "file": "rook.obj",
+      "triangles": 2536,
+      "vertices": 1432,
+      "height_studs": 4.35,
+      "bbox_studs": [
+        2.54,
+        4.35,
+        2.54
+      ],
+      "yaw_degrees": 0
+    },
+    "knight": {
+      "file": "knight.obj",
+      "triangles": 3164,
+      "vertices": 1680,
+      "height_studs": 4.77,
+      "bbox_studs": [
+        2.6,
+        4.77,
+        3.2696
+      ],
+      "yaw_degrees": 180
+    },
+    "bishop": {
+      "file": "bishop.obj",
+      "triangles": 4240,
+      "vertices": 2194,
+      "height_studs": 4.91,
+      "bbox_studs": [
+        2.68,
+        4.91,
+        2.68
+      ],
+      "yaw_degrees": 0
+    },
+    "queen": {
+      "file": "queen.obj",
+      "triangles": 4140,
+      "vertices": 2308,
+      "height_studs": 5.75,
+      "bbox_studs": [
+        2.82,
+        5.75,
+        2.82
+      ],
+      "yaw_degrees": 0
+    },
+    "king": {
+      "file": "king.obj",
+      "triangles": 3496,
+      "vertices": 1840,
+      "height_studs": 6.67,
+      "bbox_studs": [
+        2.96,
+        6.67,
+        2.96
+      ],
+      "yaw_degrees": 0
+    }
+  },
+  "totalTrianglesPerSet": 20880
+}
