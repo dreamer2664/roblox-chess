@@ -43,10 +43,20 @@ function Session.new(callbacks)
 	self.lastTick = os.clock()
 	self.pendingBotToken = 0
 	self.analysis = nil
-	self.engineName = (function()
-		local ok, name = Stockfish.status()
-		return ok and tostring(name) or "Built-in engine"
-	end)()
+	-- never block game creation on an HTTP round trip: assume the bridge is up if
+	-- it is configured, then correct the label once /health answers
+	self.engineName = Stockfish.enabled() and "Stockfish" or "Built-in engine"
+	if Stockfish.enabled() then
+		task.spawn(function()
+			local ok, name = Stockfish.status()
+			if ok then
+				self.engineName = tostring(name)
+			else
+				warn("[Chess] Stockfish bridge unreachable (" .. tostring(name) .. "), using the built-in engine")
+				self.engineName = "Built-in engine"
+			end
+		end)
+	end
 	return self
 end
 
