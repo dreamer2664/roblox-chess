@@ -1,0 +1,417 @@
+{
+  "generatedBy": "scripts/dump_render_states.lua",
+  "scenes": [
+    {
+      "botLevel": 3,
+      "camera": {
+        "eye": [
+          0,
+          34,
+          40
+        ],
+        "focus": [
+          0,
+          0,
+          0
+        ],
+        "fov": 42
+      },
+      "captured": {
+        "b": [],
+        "w": []
+      },
+      "clocks": {
+        "b": 600,
+        "w": 600
+      },
+      "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "file": "01_opening.png",
+      "increment": 0,
+      "legalTargets": [],
+      "moves": [],
+      "sides": {
+        "b": {
+          "kind": "bot",
+          "level": 3,
+          "name": "Computer (Advanced)"
+        },
+        "w": {
+          "kind": "player",
+          "name": "Carlo",
+          "userId": 325285306
+        }
+      },
+      "status": "playing",
+      "timeControl": 600,
+      "turn": "w",
+      "youAre": "w"
+    },
+    {
+      "botLevel": 3,
+      "camera": {
+        "eye": [
+          0,
+          34,
+          40
+        ],
+        "focus": [
+          0,
+          0,
+          0
+        ],
+        "fov": 42
+      },
+      "captured": {
+        "b": [
+          "B",
+          "P",
+          "P"
+        ],
+        "w": [
+          "B",
+          "P",
+          "P"
+        ]
+      },
+      "clocks": {
+        "b": 545,
+        "w": 512
+      },
+      "fen": "r1bqk2r/ppp2ppp/2n5/3n4/2BP4/5N2/PP1N1PPP/R2QK2R w KQkq - 0 10",
+      "file": "02_midgame.png",
+      "increment": 0,
+      "lastMove": {
+        "from": 60,
+        "to": 36
+      },
+      "legalTargets": [
+        {
+          "capture": true,
+          "to": 36
+        },
+        {
+          "capture": false,
+          "to": 20
+        },
+        {
+          "capture": false,
+          "to": 13
+        },
+        {
+          "capture": false,
+          "to": 6
+        },
+        {
+          "capture": false,
+          "to": 18
+        },
+        {
+          "capture": false,
+          "to": 34
+        },
+        {
+          "capture": false,
+          "to": 41
+        }
+      ],
+      "moves": [
+        "e4",
+        "e5",
+        "Nf3",
+        "Nc6",
+        "Bc4",
+        "Bc5",
+        "c3",
+        "Nf6",
+        "d4",
+        "exd4",
+        "cxd4",
+        "Bb4+",
+        "Bd2",
+        "Bxd2+",
+        "Nbxd2",
+        "d5",
+        "exd5",
+        "Nxd5"
+      ],
+      "selected": 27,
+      "sides": {
+        "b": {
+          "kind": "bot",
+          "level": 3,
+          "name": "Computer (Advanced)"
+        },
+        "w": {
+          "kind": "player",
+          "name": "Carlo",
+          "userId": 325285306
+        }
+      },
+      "status": "playing",
+      "timeControl": 600,
+      "turn": "w",
+      "youAre": "w"
+    },
+    {
+      "botLevel": 3,
+      "camera": {
+        "eye": [
+          0,
+          34,
+          40
+        ],
+        "focus": [
+          0,
+          0,
+          0
+        ],
+        "fov": 42
+      },
+      "captured": {
+        "b": [
+          "Q",
+          "R",
+          "R",
+          "B",
+          "B",
+          "N",
+          "N",
+          "P",
+          "P",
+          "P",
+          "P",
+          "P",
+          "P",
+          "P",
+          "P"
+        ],
+        "w": [
+          "Q",
+          "R",
+          "R",
+          "B",
+          "B",
+          "N",
+          "N",
+          "P",
+          "P",
+          "P",
+          "P",
+          "P",
+          "P",
+          "P"
+        ]
+      },
+      "clocks": {
+        "b": 121,
+        "w": 74
+      },
+      "dialog": "promotion",
+      "fen": "8/4Pk2/3K4/8/8/8/8/8 w - - 1 51",
+      "file": "03_promotion.png",
+      "increment": 0,
+      "lastMove": {
+        "from": 62,
+        "to": 54
+      },
+      "legalTargets": [
+        {
+          "capture": false,
+          "to": 61
+        },
+        {
+          "capture": false,
+          "to": 61
+        },
+        {
+          "capture": false,
+          "to": 61
+        },
+        {
+          "capture": false,
+          "to": 61
+        }
+      ],
+      "moves": [
+        "Kd3",
+        "Kd5",
+        "e4+",
+        "Ke5",
+        "Ke3",
+        "Ke6",
+        "Kd4",
+        "Kd6",
+        "e5+",
+        "Ke6",
+        "Ke4",
+        "Ke7",
+        "Kd5",
+        "Kd7",
+        "e6+",
+        "Ke7",
+        "Ke5",
+        "Ke8",
+        "Kd6",
+        "Kf8",
+        "e7+",
+        "Kf7"
+      ],
+      "selected": 53,
+      "sides": {
+        "b": {
+          "kind": "bot",
+          "level": 3,
+          "name": "Computer (Advanced)"
+        },
+        "w": {
+          "kind": "player",
+          "name": "Carlo",
+          "userId": 325285306
+        }
+      },
+      "status": "playing",
+      "timeControl": 600,
+      "turn": "w",
+      "youAre": "w"
+    },
+    {
+      "botLevel": 3,
+      "camera": {
+        "eye": [
+          0,
+          34,
+          40
+        ],
+        "focus": [
+          0,
+          0,
+          0
+        ],
+        "fov": 42
+      },
+      "captured": {
+        "b": [
+          "P"
+        ],
+        "w": []
+      },
+      "checkSquare": 61,
+      "clocks": {
+        "b": 431,
+        "w": 452
+      },
+      "dialog": "gameover",
+      "fen": "r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4",
+      "file": "04_checkmate.png",
+      "increment": 0,
+      "lastMove": {
+        "from": 40,
+        "to": 54
+      },
+      "legalTargets": [],
+      "moves": [
+        "e4",
+        "e5",
+        "Bc4",
+        "Nc6",
+        "Qh5",
+        "Nf6",
+        "Qxf7#"
+      ],
+      "reason": "checkmate",
+      "result": "white",
+      "sides": {
+        "b": {
+          "kind": "bot",
+          "level": 3,
+          "name": "Computer (Advanced)"
+        },
+        "w": {
+          "kind": "player",
+          "name": "Carlo",
+          "userId": 325285306
+        }
+      },
+      "status": "over",
+      "timeControl": 600,
+      "turn": "b",
+      "youAre": "w"
+    },
+    {
+      "botLevel": 3,
+      "camera": {
+        "eye": [
+          0,
+          13,
+          21
+        ],
+        "focus": [
+          0,
+          1.2000,
+          -1
+        ],
+        "fov": 40
+      },
+      "captured": {
+        "b": [
+          "B",
+          "P",
+          "P"
+        ],
+        "w": [
+          "B",
+          "P",
+          "P"
+        ]
+      },
+      "clocks": {
+        "b": 545,
+        "w": 512
+      },
+      "fen": "r1bqk2r/ppp2ppp/2n5/3n4/2BP4/5N2/PP1N1PPP/R2QK2R w KQkq - 0 10",
+      "file": "05_closeup.png",
+      "increment": 0,
+      "lastMove": {
+        "from": 60,
+        "to": 36
+      },
+      "legalTargets": [],
+      "moves": [
+        "e4",
+        "e5",
+        "Nf3",
+        "Nc6",
+        "Bc4",
+        "Bc5",
+        "c3",
+        "Nf6",
+        "d4",
+        "exd4",
+        "cxd4",
+        "Bb4+",
+        "Bd2",
+        "Bxd2+",
+        "Nbxd2",
+        "d5",
+        "exd5",
+        "Nxd5"
+      ],
+      "sides": {
+        "b": {
+          "kind": "bot",
+          "level": 3,
+          "name": "Computer (Advanced)"
+        },
+        "w": {
+          "kind": "player",
+          "name": "Carlo",
+          "userId": 325285306
+        }
+      },
+      "status": "playing",
+      "timeControl": 600,
+      "turn": "w",
+      "youAre": "w"
+    }
+  ]
+}

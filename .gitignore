@@ -1,0 +1,27 @@
+# Roblox / Rojo
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock
+*.rbxm
+*.rbxmx
+sourcemap.json
+.rojo/
+Aftman/
+Packages/
+ServerPackages/
+DevPackages/
+
+# editors
+.vscode/
+.idea/
+.DS_Store
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# build output
+dist/
+build/
